@@ -6,6 +6,9 @@ on:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
       - '**/v[0-9]+.[0-9]+.[0-9]+'
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   lint:
@@ -52,6 +55,9 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    permissions:
+      contents:  write
+      packages: write
     needs: 
       - test
       - lint
@@ -63,21 +69,72 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Generate version tags
+        id: version
+        run: |
+          # Get current date and time in UTC
+          YEAR=$(date -u +%Y)
+          MONTH=$(date -u +%m)
+          DAY=$(date -u +%d)
+          TIME=$(date -u +%H%M)
+          
+          # Create the version tags
+          MAIN_TAG="v${YEAR}.${MONTH}.${DAY}-build. ${TIME}"
+          DAY_TAG="v${YEAR}.${MONTH}.${DAY}"
+          MONTH_TAG="v${YEAR}.${MONTH}"
+          YEAR_TAG="v${YEAR}"
+          
+          echo "main_tag=${MAIN_TAG}" >> $GITHUB_OUTPUT
+          echo "day_tag=${DAY_TAG}" >> $GITHUB_OUTPUT
+          echo "month_tag=${MONTH_TAG}" >> $GITHUB_OUTPUT
+          echo "year_tag=${YEAR_TAG}" >> $GITHUB_OUTPUT
+          
+          # Create Docker tags
+          DOCKER_TAGS="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${MAIN_TAG}"
+          DOCKER_TAGS="${DOCKER_TAGS},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}: ${DAY_TAG}"
+          DOCKER_TAGS="${DOCKER_TAGS},${{ env. REGISTRY }}/${{ env.IMAGE_NAME }}:${MONTH_TAG}"
+          DOCKER_TAGS="${DOCKER_TAGS},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}: ${YEAR_TAG}"
+          DOCKER_TAGS="${DOCKER_TAGS},${{ env. REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          
+          echo "docker_tags=${DOCKER_TAGS}" >> $GITHUB_OUTPUT
+
+
+      - name: Create Git commit and tags
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Create an empty commit to mark the build
+          git commit --allow-empty -m "Automated build: ${{ steps.version.outputs.main_tag }}"
+          
+          # Create and push tags (force to update existing tags like latest, vYear, etc.)
+          git tag -f "${{ steps.version.outputs.main_tag }}"
+          # git tag -f "${{ steps.version. outputs.day_tag }}"
+          # git tag -f "${{ steps.version.outputs.month_tag }}"
+          # git tag -f "${{ steps.version.outputs. year_tag }}"
+          # git tag -f "latest"
+          
+          # Push the commit and tags
+          git push origin HEAD
+          git push origin --tags --force
+
+
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version: 1.20.x
-      - name: Login to Docker Hub
-        uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc #v2
+      # - name: Login to Docker Hub
+      #   uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc #v2
+      #   with:
+      #     username: ${{ secrets.DOCKERHUB_USERNAME }}
+      #     password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Log into registry ${{ env.REGISTRY }}
+        uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # v3.0.0
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Login to GHCR
-        uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc #v2
-        with:
-          username: ${{ secrets.BOT_USERNAME }}
-          password: ${{ secrets.BOT_GHCR_PAT }}
-          registry: ghcr.io
+          registry: ${{ env. REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build
         uses: goreleaser/goreleaser-action@7ec5c2b0c6cdda6e8bbb49444bc797dd33d74dd8 #v3
         with:
@@ -91,105 +148,72 @@ jobs:
           echo '{"experimental": "enabled"}' > ~/.docker/config.json
       - name: Create manifest for version
         run: |
-          export DH_TAG=$(git tag --points-at HEAD | sed 's/^v*//')
           docker manifest create \
-            containrrr/watchtower:$DH_TAG \
-            containrrr/watchtower:amd64-$DH_TAG \
-            containrrr/watchtower:i386-$DH_TAG \
-            containrrr/watchtower:armhf-$DH_TAG \
-            containrrr/watchtower:arm64v8-$DH_TAG
-          docker manifest create \
-            ghcr.io/containrrr/watchtower:$DH_TAG \
-            ghcr.io/containrrr/watchtower:amd64-$DH_TAG \
-            ghcr.io/containrrr/watchtower:i386-$DH_TAG \
-            ghcr.io/containrrr/watchtower:armhf-$DH_TAG \
-            ghcr.io/containrrr/watchtower:arm64v8-$DH_TAG
+            ghcr.io/containrrr/watchtower:${{ steps.version.outputs.main_tag }} \
+            ghcr.io/containrrr/watchtower:amd64-${{ steps.version.outputs.main_tag }}
       - name: Annotate manifest for version
         run: |
-          for REPO in '' ghcr.io/ ; do
-          
           docker manifest annotate \
-            ${REPO}containrrr/watchtower:$(echo $TAG | sed 's/^v*//') \
-            ${REPO}containrrr/watchtower:i386-$(echo $TAG | sed 's/^v*//') \
-            --os linux \
-            --arch 386
-          
-          docker manifest annotate \
-            ${REPO}containrrr/watchtower:$(echo $TAG | sed 's/^v*//') \
-            ${REPO}containrrr/watchtower:armhf-$(echo $TAG | sed 's/^v*//') \
-            --os linux \
-            --arch arm
-      
-          docker manifest annotate \
-            ${REPO}containrrr/watchtower:$(echo $TAG | sed 's/^v*//') \
-            ${REPO}containrrr/watchtower:arm64v8-$(echo $TAG | sed 's/^v*//') \
-            --os linux \
-            --arch arm64 \
-            --variant v8
-            
-            done
+            ghcr.io/containrrr/watchtower:${{ steps.version.outputs.day_tag }} \
+            ghcr.io/containrrr/watchtower:amd64-${{ steps.version.outputs.day_tag }} \
+            ghcr.io/containrrr/watchtower:${{ steps.version.outputs.month_tag }} \
+            ghcr.io/containrrr/watchtower:amd64-${{ steps.version.outputs.month_tag }} \
+            ghcr.io/containrrr/watchtower:${{ steps.version.outputs.year_tag }} \
+            ghcr.io/containrrr/watchtower:amd64-${{ steps.version.outputs.year_tag }}
       - name: Create manifest for latest
         run: |
           docker manifest create \
-            containrrr/watchtower:latest \
-            containrrr/watchtower:amd64-latest \
-            containrrr/watchtower:i386-latest \
-            containrrr/watchtower:armhf-latest \
-            containrrr/watchtower:arm64v8-latest
-          docker manifest create \
             ghcr.io/containrrr/watchtower:latest \
-            ghcr.io/containrrr/watchtower:amd64-latest \
-            ghcr.io/containrrr/watchtower:i386-latest \
-            ghcr.io/containrrr/watchtower:armhf-latest \
-            ghcr.io/containrrr/watchtower:arm64v8-latest
-      - name: Annotate manifest for latest
-        run: |
-          for REPO in '' ghcr.io/ ; do
+            ghcr.io/containrrr/watchtower:amd64-latest
+      # - name: Annotate manifest for latest
+      #   run: |
+      #     for REPO in '' ghcr.io/ ; do
 
-          docker manifest annotate \
-            ${REPO}containrrr/watchtower:latest \
-            ${REPO}containrrr/watchtower:i386-latest \
-            --os linux \
-            --arch 386
+      #     docker manifest annotate \
+      #       ${REPO}containrrr/watchtower:latest \
+      #       ${REPO}containrrr/watchtower:i386-latest \
+      #       --os linux \
+      #       --arch 386
       
-          docker manifest annotate \
-            ${REPO}containrrr/watchtower:latest \
-            ${REPO}containrrr/watchtower:armhf-latest \
-            --os linux \
-            --arch arm
+      #     docker manifest annotate \
+      #       ${REPO}containrrr/watchtower:latest \
+      #       ${REPO}containrrr/watchtower:armhf-latest \
+      #       --os linux \
+      #       --arch arm
             
-          docker manifest annotate \
-            ${REPO}containrrr/watchtower:latest \
-            ${REPO}containrrr/watchtower:arm64v8-latest \
-            --os linux \
-            --arch arm64 \
-            --variant v8
+      #     docker manifest annotate \
+      #       ${REPO}containrrr/watchtower:latest \
+      #       ${REPO}containrrr/watchtower:arm64v8-latest \
+      #       --os linux \
+      #       --arch arm64 \
+      #       --variant v8
 
-          done
-      - name: Push manifests to Dockerhub
-        env:
-          DOCKER_USER: ${{ secrets.DOCKERHUB_USERNAME }}
-          DOCKER_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-        run: |
-          docker login -u $DOCKER_USER -p $DOCKER_TOKEN && \
-            docker manifest push containrrr/watchtower:$(echo $TAG | sed 's/^v*//') && \
-            docker manifest push containrrr/watchtower:latest
+      #     done
+      # - name: Push manifests to Dockerhub
+      #   env:
+      #     DOCKER_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+      #     DOCKER_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      #   run: |
+      #     docker login -u $DOCKER_USER -p $DOCKER_TOKEN && \
+      #       docker manifest push containrrr/watchtower:$(echo $TAG | sed 's/^v*//') && \
+      #       docker manifest push containrrr/watchtower:latest
       - name: Push manifests to GitHub Container Registry
         env:
-          DOCKER_USER: ${{ secrets.BOT_USERNAME }}
-          DOCKER_TOKEN: ${{ secrets.BOT_GHCR_PAT }}
+          DOCKER_USER: ${{ github.actor }}
+          DOCKER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REGISTRY:  ${{ env.REGISTRY }}
         run: |
-          docker login -u $DOCKER_USER -p $DOCKER_TOKEN ghcr.io && \
+          docker login -u $DOCKER_USER -p $DOCKER_TOKEN $REGISTRY && \
             docker manifest push ghcr.io/containrrr/watchtower:$(echo $TAG | sed 's/^v*//') && \
             docker manifest push ghcr.io/containrrr/watchtower:latest
 
-  renew-docs:
-    name: Refresh pkg.go.dev
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-    - name: Pull new module version
-      uses: andrewslotin/go-proxy-pull-action@50fea06a976087614babb9508e5c528b464f4645 #master@2022-10-14
+  # renew-docs:
+  #   name: Refresh pkg.go.dev
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Pull new module version
+  #     uses: andrewslotin/go-proxy-pull-action@50fea06a976087614babb9508e5c528b464f4645 #master@2022-10-14
 
   
   

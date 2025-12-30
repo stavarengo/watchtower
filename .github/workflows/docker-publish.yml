@@ -1,0 +1,88 @@
+name: Docker
+
+on:
+  schedule:
+    - cron: '42 13 1 * *'
+  workflow_dispatch:  # Allow manual triggers for testing
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build: 
+    runs-on: ubuntu-latest
+    permissions:
+      contents:  write
+      packages: write
+
+    steps:
+      - name:  Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate version tags
+        id: version
+        run: |
+          # Get current date and time in UTC
+          YEAR=$(date -u +%Y)
+          MONTH=$(date -u +%m)
+          DAY=$(date -u +%d)
+          TIME=$(date -u +%H%M)
+          
+          # Create the version tags
+          MAIN_TAG="v${YEAR}.${MONTH}.${DAY}-build. ${TIME}"
+          DAY_TAG="v${YEAR}.${MONTH}.${DAY}"
+          MONTH_TAG="v${YEAR}.${MONTH}"
+          YEAR_TAG="v${YEAR}"
+          
+          echo "main_tag=${MAIN_TAG}" >> $GITHUB_OUTPUT
+          echo "day_tag=${DAY_TAG}" >> $GITHUB_OUTPUT
+          echo "month_tag=${MONTH_TAG}" >> $GITHUB_OUTPUT
+          echo "year_tag=${YEAR_TAG}" >> $GITHUB_OUTPUT
+          
+          # Create Docker tags
+          DOCKER_TAGS="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${MAIN_TAG}"
+          DOCKER_TAGS="${DOCKER_TAGS},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}: ${DAY_TAG}"
+          DOCKER_TAGS="${DOCKER_TAGS},${{ env. REGISTRY }}/${{ env.IMAGE_NAME }}:${MONTH_TAG}"
+          DOCKER_TAGS="${DOCKER_TAGS},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}: ${YEAR_TAG}"
+          DOCKER_TAGS="${DOCKER_TAGS},${{ env. REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          
+          echo "docker_tags=${DOCKER_TAGS}" >> $GITHUB_OUTPUT
+
+      - name: Create Git commit and tags
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Create an empty commit to mark the build
+          git commit --allow-empty -m "Automated build: ${{ steps.version.outputs.main_tag }}"
+          
+          # Create and push tags (force to update existing tags like latest, vYear, etc.)
+          git tag -f "${{ steps.version.outputs.main_tag }}"
+          git tag -f "${{ steps.version. outputs.day_tag }}"
+          git tag -f "${{ steps.version.outputs.month_tag }}"
+          git tag -f "${{ steps.version.outputs. year_tag }}"
+          git tag -f "latest"
+          
+          # Push the commit and tags
+          git push origin HEAD
+          git push origin --tags --force
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226 # v3.0.0
+
+      - name: Log into registry ${{ env.REGISTRY }}
+        uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # v3.0.0
+        with:
+          registry: ${{ env. REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
+        with:
+          context: . 
+          push: true
+          tags: ${{ steps. version.outputs.docker_tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

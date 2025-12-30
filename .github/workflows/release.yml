@@ -157,6 +157,9 @@ jobs:
             ghcr.io/stavarengo/watchtower:amd64-${{ steps.version.outputs.main_tag }} \
             --os linux --arch amd64
           
+          # Create rolling tag manifests (day, month, year) that all reference the same timestamped image
+          # This creates multiple tags pointing to the same build for easy version selection
+          
           # Create and annotate manifest for day_tag (vYear.Month.Day)
           docker manifest create \
             ghcr.io/stavarengo/watchtower:${{ steps.version.outputs.day_tag }} \
@@ -184,7 +187,7 @@ jobs:
             ghcr.io/stavarengo/watchtower:amd64-${{ steps.version.outputs.main_tag }} \
             --os linux --arch amd64
           
-          # Create and annotate manifest for latest
+          # Create and annotate manifest for latest (references amd64-latest built by goreleaser)
           docker manifest create \
             ghcr.io/stavarengo/watchtower:latest \
             ghcr.io/stavarengo/watchtower:amd64-latest

@@ -149,22 +149,22 @@ jobs:
       - name: Create manifest for version
         run: |
           docker manifest create \
-            ghcr.io/containrrr/watchtower:${{ steps.version.outputs.main_tag }} \
-            ghcr.io/containrrr/watchtower:amd64-${{ steps.version.outputs.main_tag }}
+            ghcr.io/stavarengo/watchtower:${{ steps.version.outputs.main_tag }} \
+            ghcr.io/stavarengo/watchtower:amd64-${{ steps.version.outputs.main_tag }}
       - name: Annotate manifest for version
         run: |
           docker manifest annotate \
-            ghcr.io/containrrr/watchtower:${{ steps.version.outputs.day_tag }} \
-            ghcr.io/containrrr/watchtower:amd64-${{ steps.version.outputs.day_tag }} \
-            ghcr.io/containrrr/watchtower:${{ steps.version.outputs.month_tag }} \
-            ghcr.io/containrrr/watchtower:amd64-${{ steps.version.outputs.month_tag }} \
-            ghcr.io/containrrr/watchtower:${{ steps.version.outputs.year_tag }} \
-            ghcr.io/containrrr/watchtower:amd64-${{ steps.version.outputs.year_tag }}
+            ghcr.io/stavarengo/watchtower:${{ steps.version.outputs.day_tag }} \
+            ghcr.io/stavarengo/watchtower:amd64-${{ steps.version.outputs.day_tag }} \
+            ghcr.io/stavarengo/watchtower:${{ steps.version.outputs.month_tag }} \
+            ghcr.io/stavarengo/watchtower:amd64-${{ steps.version.outputs.month_tag }} \
+            ghcr.io/stavarengo/watchtower:${{ steps.version.outputs.year_tag }} \
+            ghcr.io/stavarengo/watchtower:amd64-${{ steps.version.outputs.year_tag }}
       - name: Create manifest for latest
         run: |
           docker manifest create \
-            ghcr.io/containrrr/watchtower:latest \
-            ghcr.io/containrrr/watchtower:amd64-latest
+            ghcr.io/stavarengo/watchtower:latest \
+            ghcr.io/stavarengo/watchtower:amd64-latest
       # - name: Annotate manifest for latest
       #   run: |
       #     for REPO in '' ghcr.io/ ; do
@@ -213,12 +213,12 @@ jobs:
           REGISTRY:  ${{ env.REGISTRY }}
         run: |
           docker login -u $DOCKER_USER -p $DOCKER_TOKEN $REGISTRY && \
-            ghcr.io/containrrr/watchtower:${{ steps.version.outputs.day_tag }} \
-            ghcr.io/containrrr/watchtower:amd64-${{ steps.version.outputs.day_tag }} \
-            ghcr.io/containrrr/watchtower:${{ steps.version.outputs.month_tag }} \
-            ghcr.io/containrrr/watchtower:amd64-${{ steps.version.outputs.month_tag }} \
-            ghcr.io/containrrr/watchtower:${{ steps.version.outputs.year_tag }} \
-            ghcr.io/containrrr/watchtower:amd64-${{ steps.version.outputs.year_tag }}
+            ghcr.io/stavarengo/watchtower:${{ steps.version.outputs.day_tag }} \
+            ghcr.io/stavarengo/watchtower:amd64-${{ steps.version.outputs.day_tag }} \
+            ghcr.io/stavarengo/watchtower:${{ steps.version.outputs.month_tag }} \
+            ghcr.io/stavarengo/watchtower:amd64-${{ steps.version.outputs.month_tag }} \
+            ghcr.io/stavarengo/watchtower:${{ steps.version.outputs.year_tag }} \
+            ghcr.io/stavarengo/watchtower:amd64-${{ steps.version.outputs.year_tag }}
 
 
   # renew-docs:

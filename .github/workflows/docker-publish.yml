@@ -1,4 +1,6 @@
-name: Docker
+name: Docker Build & Publish (GHCR)
+# Builds and publishes a versioned Docker image to GHCR.
+# Creates date-based git tags and supports manual or scheduled runs.
 
 on:
   schedule:

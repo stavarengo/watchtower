@@ -80,7 +80,7 @@ jobs:
           TIME=$(date -u +%H%M)
           
           # Create the version tags
-          MAIN_TAG="v${YEAR}.${MONTH}.${DAY}-build. ${TIME}"
+          MAIN_TAG="v${YEAR}.${MONTH}.${DAY}-build.${TIME}"
           DAY_TAG="v${YEAR}.${MONTH}.${DAY}"
           MONTH_TAG="v${YEAR}.${MONTH}"
           YEAR_TAG="v${YEAR}"
@@ -92,10 +92,10 @@ jobs:
           
           # Create Docker tags
           DOCKER_TAGS="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${MAIN_TAG}"
-          DOCKER_TAGS="${DOCKER_TAGS},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}: ${DAY_TAG}"
-          DOCKER_TAGS="${DOCKER_TAGS},${{ env. REGISTRY }}/${{ env.IMAGE_NAME }}:${MONTH_TAG}"
-          DOCKER_TAGS="${DOCKER_TAGS},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}: ${YEAR_TAG}"
-          DOCKER_TAGS="${DOCKER_TAGS},${{ env. REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          DOCKER_TAGS="${DOCKER_TAGS},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${DAY_TAG}"
+          DOCKER_TAGS="${DOCKER_TAGS},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${MONTH_TAG}"
+          DOCKER_TAGS="${DOCKER_TAGS},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${YEAR_TAG}"
+          DOCKER_TAGS="${DOCKER_TAGS},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
           
           echo "docker_tags=${DOCKER_TAGS}" >> $GITHUB_OUTPUT
 

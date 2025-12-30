@@ -146,25 +146,52 @@ jobs:
         run: |
           mkdir -p ~/.docker/ && \
           echo '{"experimental": "enabled"}' > ~/.docker/config.json
-      - name: Create manifest for version
+      - name: Create and annotate manifests
         run: |
+          # Create and annotate manifest for main_tag (vYear.Month.Day-build.HHmm)
           docker manifest create \
             ghcr.io/stavarengo/watchtower:${{ steps.version.outputs.main_tag }} \
             ghcr.io/stavarengo/watchtower:amd64-${{ steps.version.outputs.main_tag }}
-      - name: Annotate manifest for version
-        run: |
+          docker manifest annotate \
+            ghcr.io/stavarengo/watchtower:${{ steps.version.outputs.main_tag }} \
+            ghcr.io/stavarengo/watchtower:amd64-${{ steps.version.outputs.main_tag }} \
+            --os linux --arch amd64
+          
+          # Create and annotate manifest for day_tag (vYear.Month.Day)
+          docker manifest create \
+            ghcr.io/stavarengo/watchtower:${{ steps.version.outputs.day_tag }} \
+            ghcr.io/stavarengo/watchtower:amd64-${{ steps.version.outputs.main_tag }}
           docker manifest annotate \
             ghcr.io/stavarengo/watchtower:${{ steps.version.outputs.day_tag }} \
-            ghcr.io/stavarengo/watchtower:amd64-${{ steps.version.outputs.day_tag }} \
+            ghcr.io/stavarengo/watchtower:amd64-${{ steps.version.outputs.main_tag }} \
+            --os linux --arch amd64
+          
+          # Create and annotate manifest for month_tag (vYear.Month)
+          docker manifest create \
             ghcr.io/stavarengo/watchtower:${{ steps.version.outputs.month_tag }} \
-            ghcr.io/stavarengo/watchtower:amd64-${{ steps.version.outputs.month_tag }} \
+            ghcr.io/stavarengo/watchtower:amd64-${{ steps.version.outputs.main_tag }}
+          docker manifest annotate \
+            ghcr.io/stavarengo/watchtower:${{ steps.version.outputs.month_tag }} \
+            ghcr.io/stavarengo/watchtower:amd64-${{ steps.version.outputs.main_tag }} \
+            --os linux --arch amd64
+          
+          # Create and annotate manifest for year_tag (vYear)
+          docker manifest create \
             ghcr.io/stavarengo/watchtower:${{ steps.version.outputs.year_tag }} \
-            ghcr.io/stavarengo/watchtower:amd64-${{ steps.version.outputs.year_tag }}
-      - name: Create manifest for latest
-        run: |
+            ghcr.io/stavarengo/watchtower:amd64-${{ steps.version.outputs.main_tag }}
+          docker manifest annotate \
+            ghcr.io/stavarengo/watchtower:${{ steps.version.outputs.year_tag }} \
+            ghcr.io/stavarengo/watchtower:amd64-${{ steps.version.outputs.main_tag }} \
+            --os linux --arch amd64
+          
+          # Create and annotate manifest for latest
           docker manifest create \
             ghcr.io/stavarengo/watchtower:latest \
             ghcr.io/stavarengo/watchtower:amd64-latest
+          docker manifest annotate \
+            ghcr.io/stavarengo/watchtower:latest \
+            ghcr.io/stavarengo/watchtower:amd64-latest \
+            --os linux --arch amd64
       # - name: Annotate manifest for latest
       #   run: |
       #     for REPO in '' ghcr.io/ ; do
@@ -214,6 +241,9 @@ jobs:
         run: |
           docker login -u $DOCKER_USER -p $DOCKER_TOKEN $REGISTRY && \
             docker manifest push ghcr.io/stavarengo/watchtower:${{ steps.version.outputs.main_tag }} && \
+            docker manifest push ghcr.io/stavarengo/watchtower:${{ steps.version.outputs.day_tag }} && \
+            docker manifest push ghcr.io/stavarengo/watchtower:${{ steps.version.outputs.month_tag }} && \
+            docker manifest push ghcr.io/stavarengo/watchtower:${{ steps.version.outputs.year_tag }} && \
             docker manifest push ghcr.io/stavarengo/watchtower:latest
 
 

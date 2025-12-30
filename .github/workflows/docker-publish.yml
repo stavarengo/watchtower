@@ -5,6 +5,8 @@ name: Docker Build & Publish (GHCR)
 on:
   schedule:
     - cron: '42 13 1 * *'
+  push: 
+    branches: [main]
   workflow_dispatch:  # Allow manual triggers for testing
 
 env:

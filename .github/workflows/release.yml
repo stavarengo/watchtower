@@ -110,9 +110,9 @@ jobs:
           
           # Create and push tags (force to update existing tags like latest, vYear, etc.)
           git tag -f "${{ steps.version.outputs.main_tag }}"
-          # git tag -f "${{ steps.version. outputs.day_tag }}"
+          # git tag -f "${{ steps.version.outputs.day_tag }}"
           # git tag -f "${{ steps.version.outputs.month_tag }}"
-          # git tag -f "${{ steps.version.outputs. year_tag }}"
+          # git tag -f "${{ steps.version.outputs.year_tag }}"
           # git tag -f "latest"
           
           # Push the commit and tags
@@ -132,7 +132,7 @@ jobs:
       - name: Log into registry ${{ env.REGISTRY }}
         uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # v3.0.0
         with:
-          registry: ${{ env. REGISTRY }}
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build
